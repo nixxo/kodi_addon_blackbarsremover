@@ -1,4 +1,3 @@
-import sys
 import math
 
 import json
@@ -42,6 +41,15 @@ def apply_zoom(level):
     return False
 
 
+def get_current_video_resolution():
+    current_video = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Player.GetProperties", "params": {"playerid": 1, "properties": ["currentvideostream"]}, "id": 1}')
+    current_video = json.loads(current_video)
+    if 'result' in current_video:
+        if 'currentvideostream' in current_video['result']:
+            return current_video['result']['currentvideostream']['width'], current_video['result']['currentvideostream']['height']
+    return None, None
+
+
 def get_desired_zoom_level():
     blackbarcomp = None
     blackbarcomp_raw = xbmc.executeJSONRPC('{"jsonrpc": "2.0", "method": "Settings.GetSettingValue", "params": {"setting": "videoplayer.errorinaspect"}, "id": 1}')
@@ -52,7 +60,14 @@ def get_desired_zoom_level():
     if blackbarcomp is None:
         return 0
     aspectratio_screen = float(xbmcgui.getScreenWidth()) / float(xbmcgui.getScreenHeight())
-    aspectratio_video = xbmc.RenderCapture().getAspectRatio()
+
+    video_width, video_height = get_current_video_resolution()
+    if video_width and video_height:
+        aspectratio_video = float(video_width) / float(video_height)
+    else:
+        # unreliable???
+        aspectratio_video = xbmc.RenderCapture().getAspectRatio()
+
     aspectratio_compensation = aspectratio_video - (aspectratio_video * (blackbarcomp / 100.0))
     ratio_correction = (aspectratio_compensation / aspectratio_screen)
     zoomlevel = math.ceil(ratio_correction * 100.0) / 100.0
